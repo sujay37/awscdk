@@ -1,0 +1,21 @@
+#ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ecal-ingress
+  #  namespace: kube-system
+  annotations:
+    ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "PUT, GET, POST, OPTIONS, DELETE"
+spec:
+  rules:
+  - http:
+      paths:
+        - path: /ecal_services
+          pathType: Prefix
+          backend:
+            service:
+              name: ecal-service 
+              port: 
+                number: 80

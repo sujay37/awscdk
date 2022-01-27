@@ -1,0 +1,69 @@
+---
+#deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ecal
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: ecal
+        tier: frontend
+    spec:
+      containers:
+        - name: redis
+          image: redis:6.0.6-alpine
+          imagePullPolicy: IfNotPresent
+        - name: app
+          image: 098474941189.dkr.ecr.us-east-1.amazonaws.com/kipu/cal/dev/api:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://dev-cal-rds-devdatabaseafc6bfd8-foei4evo12mt.cluster-csxftqa8elnv.us-east-1.rds.amazonaws.com:5432/ecaldb
+            - name: SPRING_DATASOURCE_USERNAME
+              value: postgres
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: D1Bvg.=tSl-fmHJ.-dtg7jztNHtvDw
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              value: update
+            - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+              value: org.postgresql.Driver
+            - name: SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT
+              value: org.hibernate.dialect.PostgreSQLDialect
+            - name: SERVER_SERVLET_CONTEXT_PATH
+              value: /ecal_services
+            - name: SPRING_REDIS_HOST
+              value: localhost
+            - name: API_START_LINK
+              value: https://devapi.kipucalendar-qa.com/appointment-meeting/
+            - name: TELEHEALTH_SERVICE_BASE_URL
+              value: http://telehealth-service/kipu-telehealth-service/
+            - name: NOTIFICATION_SERVICE_BASE_URL
+              value: http://notification-service/kipu-notification-service/
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_TRACE_AGENT_PORT
+              value: "8126"              
+---
+#service
+apiVersion: v1
+kind: Service
+metadata:
+  name: ecal-service
+spec:
+  selector:
+    app: ecal
+    tier: frontend
+  ports:
+    - port: 80
+      targetPort: 8080      

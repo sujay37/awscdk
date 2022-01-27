@@ -1,0 +1,151 @@
+class:
+  env: &val "dev"
+  projectName: &nam "cal"
+
+  #eks_stack.py file__                                                                                 
+eks_stack:
+  eks_role:
+    type: "devcaladmin"
+    name: 'devcaleks-cluster-role'
+    managed_policy_name: 'AmazonEKSClusterPolicy'
+
+  nodegroup_role:
+    type: "devcaleksnode"
+    name: 'devcaleks-node-role'
+    managed_policy_name: "AdministratorAccess"
+
+  eks_instance_profile:
+    type: 'instanceprofile'
+    name: 'devcaleks-cluster-role'
+
+  cluster: #'"{{user}}-CAL-EKS-CLUSTER"'
+    type:
+      - *val
+      - "-"
+      - *nam
+      - "-EKS-CLUSTER"
+    name: "devcalCluster"
+    version: 'eks.KubernetesVersion.V1_20'
+    default_capacity: 0
+    ec2.instanceType: "t3.large"
+
+  nodeGroup:
+    name: #'"{{user}}-CAL-EKS-CLUSTER-NodeGroup"'
+    - *val
+    - "-"
+    - *nam
+    - "-EKS-CLUSTER-NodeGroup"
+    disk_size: 50
+    min_size: 1
+
+  asg.auto_scaling_group_capacity: #'"{{user}}-CAL-EKS-AUTO"'
+    type:
+      - *val
+      - "-"
+      - *nam
+      - "-EKS-AUTO"
+    min_capacity: 1
+    max_capacity: 1
+    desired_capacity: 1
+
+  my_lambda_environment_cognito_api: #"'https://api-users-cognito.kipu.{{user}}'"
+    - 'https://api-users-cognito.kipu.'
+    - *val
+
+  api_with_method_LambdaRestApi:
+    rest_api_name: 'devcdkrestapi_authorizer'
+#codepipeline_backend.py file_________________________________________________________________
+codepipeline_backend:
+  artifact_bucket: 'artifactbucket'
+  github_token: 'github-token'
+  build_project:
+    idName: 'buildbackendev'
+    project_name: 'BuildBackenddev'
+    description: 'EKS Deployment'
+    env_build_image: STANDARD_3_0
+    enviornment_variables:
+      AWS_DEFAULT_REGION: 'us-east-1'
+      AWS_CLUSTER_NAME: 'devcalCluster'
+      AWS_ACCOUNT_ID: '098474941189'
+      IMAGE_REPO_NAME: 'kipu/cal/dev/api'
+      IMAGE_TAG: 'latest'                        
+    cache_prefix: 'codebuild-cache'
+  pipeline: 'backend-pipeline'
+  pipeline_stage_Source:
+    repo: 'kipu-rcm-api'
+    branch: 'dev'
+    owner: 'kipusystems'
+    action_name: 'GitHubSource'
+  build_project_role_name: 'AdministratorAccess'
+
+
+#rds_stack.py file_________________________________________________________________                                                                                             
+rds_stack:
+  database_Cluster:
+    type: '"devDatabase"'
+    version: 'rds.AuroraPostgresEngineVersion.VER_10_11'
+    instance_props:
+      instance_type:
+        class: 'BURSTABLE3'
+        size: 'MEDIUM'                   
+#s3_stack.py file_________________________________________________________________
+s3_stack:
+  artifacts_bucket:
+    idName: 'build-artifacts-for-backend'
+    access_control: BUCKET_OWNER_FULL_CONTROL
+    encryption: S3_MANAGED
+    bucket_name: '-build-artifacts-stage-backend'
+    removal_policy: DESTROY
+  cfnOutput:
+    idName: 's3-build-artifacts-export'
+    export_name: 'build-artifacts-bucket-for-backend'
+
+#vpc_stack.py file_________________________________________________________________
+vpc_stack:
+  vpc_type: #"'{{user}}VPC'"
+    - *val
+    - 'VPC'
+  vpc_subnetConfig:
+    public_name: #"'{{user}}_public'"
+      - *val
+      - '_public'
+    private_name: #"'{{user}}_private'"
+      - *val
+      - '_private'
+
+#app.py file_________________________________________________________________
+app:
+  vpc_stack:
+    - *val
+    - "-"
+    - *nam
+    - "-VPC"
+  eks_stack:
+    - *val
+    - "-"
+    - *nam
+    - "-EKS"
+  rds_stack:
+    - *val
+    - "-"
+    - *nam
+    - "-RDS"
+  s3_stack:
+    - *val
+    - "-"
+    - *nam
+    - "-S3"
+  codepipeline_backend:
+    name:
+      - *val
+      - "-"
+      - *nam
+      - "-CodePipeline"
+    artifact_bucket_name: 'build-artifacts-bucket'
+
+#cdk.json file_________________________________________________________________
+json:
+  app: "python app.py"
+  context:
+    project_name: "calender"
+    env: *val
